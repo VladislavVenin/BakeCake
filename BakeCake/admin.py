@@ -11,6 +11,7 @@ from .models import (
     Inscription,
     Decor
 )
+from django.utils.html import format_html
 
 
 class OrderedCakeInline(admin.TabularInline):
@@ -33,8 +34,14 @@ class ClientAdmin(admin.ModelAdmin):
 
 @admin.register(Cake)
 class CakeAdmin(admin.ModelAdmin):
-    list_display = ['picture', 'title']
-    list_display_links = ['picture', 'title']
+    list_display = ['title', 'image_preview', 'get_price']
+    list_display_links = ['title', 'image_preview']
+
+    def image_preview(self, obj):
+        if obj.picture:
+            return format_html('<img src="{}" width="200" />', obj.picture.url)
+        return "Нет изображения"
+    image_preview.short_description = "Фото"
 
 
 @admin.register(Layer)
