@@ -8,61 +8,79 @@ Vue.createApp({
         return {
             RegSchema: {
                 reg: (value) => {
-                    if (value) {
+                    if (value && value.includes('@')) {
                         return true;
                     }
-                    return 'Поле не заполнено';
-                },
-                phone_format: (value) => {
-                    const regex = /^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$/
-                    if (!value) {
-                        return true;
-                    }
-                    if ( !regex.test(value)) {
-
-                        return '⚠ Формат телефона нарушен';
-                    }
-                    return true;
-                },
-                code_format: (value) => {
-                    const regex = /^[a-zA-Z0-9]+$/
-                    if (!value) {
-                        return true;
-                    }
-                    if ( !regex.test(value)) {
-
-                        return '⚠ Формат кода нарушен';
-                    }
-                    return true;
+                    return 'Введите корректный email';
                 }
             },
-            Step: 'Number',
             RegInput: '',
-            EnteredNumber: ''
+            loading: false,
+            error: ''
         }
     },
     methods: {
-        RegSubmit() {
-            if (this.Step === 'Number') {
-                this.$refs.HiddenFormSubmitReg.click()
-                this.Step = 'Code'
-                this.EnteredNumber = this.RegInput
-                this.RegInput = ''
+        async RegSubmit() {
+            if (!this.RegInput || !this.RegInput.includes('@')) {
+                this.error = 'Введите корректный email';
+                return;
             }
-            else {
-                this.$refs.HiddenFormSubmitReg.click()
-                this.Step = 'Finish'
-                this.RegInput = 'Регистрация успешна'
+            
+            this.loading = true;
+            this.error = '';
+            
+            try {
+                const csrftoken = this.getCookie('csrftoken');
+                
+                const response = await fetch('/accounts/api/auth/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        email: this.RegInput
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    this.RegInput = 'Регистрация успешна';
+                    setTimeout(() => {
+                        window.location.href = '/lk/';
+                    }, 1500);
+                } else {
+                    this.error = data.error || 'Ошибка входа';
+                    this.RegInput = '';
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                this.error = 'Ошибка соединения с сервером';
+            } finally {
+                this.loading = false;
             }
         },
-        ToRegStep1() {
-            this.Step = 'Number'
-            this.RegInput = this.EnteredNumber
-        },
+        
         Reset() {
-            this.Step = 'Number'
-            this.RegInput = ''
-            EnteredNumber = ''
+            this.RegInput = '';
+            this.error = '';
+            this.loading = false;
+        },
+        
+        getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
     }
-}).mount('#RegModal')
+}).mount('#RegModal');

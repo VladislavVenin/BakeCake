@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 
 class OrderedCake(models.Model):
@@ -62,9 +63,17 @@ class Order(models.Model):
 class Client(models.Model):
     fio = models.CharField('клиент', max_length=200)
     phone = models.CharField('клиент', max_length=12)
+    email = models.EmailField('Email', unique=True, null=True, blank=True)
     address = models.TextField(
         'Адрес квартиры',
         help_text='ул. Подольских курсантов д.5 кв.4'
+    )
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='client_data',
     )
 
     class Meta:
@@ -73,7 +82,7 @@ class Client(models.Model):
         verbose_name_plural = 'Клиенты'
 
     def __str__(self):
-        return self.fio
+        return self.fio or self.email or str(self.id)
 
 
 class Cake(models.Model):
