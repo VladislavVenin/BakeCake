@@ -45,8 +45,7 @@ Vue.createApp({
                     if (!value) {
                         return true;
                     }
-                    if ( !regex.test(value)) {
-
+                    if (!regex.test(value)) {
                         return '⚠ Формат имени нарушен';
                     }
                     return true;
@@ -56,19 +55,17 @@ Vue.createApp({
                     if (!value) {
                         return true;
                     }
-                    if ( !regex.test(value)) {
-
+                    if (!regex.test(value)) {
                         return '⚠ Формат почты нарушен';
                     }
                     return true;
                 },
-                phone_format:(value) => {
+                phone_format: (value) => {
                     const regex = /^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$/
                     if (!value) {
                         return true;
                     }
-                    if ( !regex.test(value)) {
-
+                    if (!regex.test(value)) {
                         return '⚠ Формат телефона нарушен';
                     }
                     return true;
@@ -116,12 +113,11 @@ Vue.createApp({
                 Words: 0
             },
             
-             
-            levelsList: [],     
-            formsList: [],      
-            toppingsList: [],   
-            berriesList: [],    
-            decorsList: [],     
+            levelsList: [],
+            formsList: [],
+            toppingsList: [],
+            berriesList: [],
+            decorsList: [],
             
             berriesData: {},
             toppingsData: {},
@@ -154,30 +150,37 @@ Vue.createApp({
     
     mounted() {
         this.loadCakeData();
+        this.checkAuthStatus();
         
-         
         this.$watch('Berries', (newVal) => {
             console.log('=== Berries changed ===');
-            console.log('New value:', newVal);
-            console.log('Selected berry name:', this.selectedBerryName);
-            console.log('Berry price:', this.getBerryPrice());
-            console.log('Berries list:', this.berriesList);
         });
         
         this.$watch('Levels', (newVal) => {
             console.log('=== Levels changed ===');
-            console.log('New value:', newVal);
-            console.log('Selected level name:', this.selectedLevelName);
-            console.log('Level price:', this.getLevelPrice());
-            console.log('Levels list:', this.levelsList);
-        });
-        
-        this.$watch('selectedBerryName', (newVal) => {
-            console.log('Selected berry name updated to:', newVal);
         });
     },
     
     methods: {
+        async checkAuthStatus() {
+            try {
+                const response = await fetch('/accounts/api/profile/');
+                if (response.ok) {
+                    const data = await response.json();
+                    const loginBtn = document.getElementById('loginBtn');
+                    const profileLink = document.getElementById('profileLink');
+                    
+                    if (loginBtn && profileLink) {
+                        loginBtn.style.display = 'none';
+                        profileLink.style.display = 'block';
+                        profileLink.textContent = data.fio || data.email || 'Профиль';
+                    }
+                }
+            } catch (error) {
+                console.log('Пользователь не авторизован');
+            }
+        },
+        
         async loadCakeData() {
             this.isLoading = true;
             this.error = null;
@@ -191,18 +194,15 @@ Vue.createApp({
                 const data = await response.json();
                 console.log('Loaded API data:', data);
                 
-                 
-                 
                 if (data.layers && Array.isArray(data.layers)) {
                     this.levelsList = data.layers.map((layer, index) => ({
-                        id: layer.quantity,   
+                        id: layer.quantity,
                         quantity: layer.quantity,
                         price: parseFloat(layer.price),
                         name: `${layer.quantity}`
                     }));
                 }
                 
-                 
                 if (data.shapes && Array.isArray(data.shapes)) {
                     this.formsList = data.shapes.map(shape => ({
                         id: shape.id || shape.shape,
@@ -212,7 +212,6 @@ Vue.createApp({
                     }));
                 }
                 
-                 
                 if (data.toppings && Array.isArray(data.toppings)) {
                     this.toppingsList = data.toppings.map(topping => ({
                         id: topping.id,
@@ -221,7 +220,6 @@ Vue.createApp({
                     }));
                 }
                 
-                 
                 if (data.berries && Array.isArray(data.berries)) {
                     this.berriesList = data.berries.map(berry => ({
                         id: berry.id,
@@ -230,7 +228,6 @@ Vue.createApp({
                     }));
                 }
                 
-                 
                 if (data.decors && Array.isArray(data.decors)) {
                     this.decorsList = data.decors.map(decor => ({
                         id: decor.id,
@@ -239,14 +236,12 @@ Vue.createApp({
                     }));
                 }
                 
-                 
                 this.DATA.Levels = this.levelsList.map(l => l.name);
                 this.DATA.Forms = this.formsList.map(f => f.shape);
                 this.DATA.Toppings = this.toppingsList.map(t => t.title);
                 this.DATA.Berries = this.berriesList.map(b => b.title);
                 this.DATA.Decors = this.decorsList.map(d => d.title);
                 
-                 
                 this.berriesData = {};
                 this.berriesList.forEach(berry => {
                     this.berriesData[berry.id] = berry.price;
@@ -276,7 +271,6 @@ Vue.createApp({
                 
                 console.log('Processed levelsList:', this.levelsList);
                 console.log('Processed berriesList:', this.berriesList);
-                console.log('levelsData:', this.levelsData);
                 
             } catch (error) {
                 console.error('Error loading cake data:', error);
@@ -286,7 +280,6 @@ Vue.createApp({
             }
         },
         
-         
         getBerryPrice() {
             if (!this.Berries) return 0;
             return this.berriesData[this.Berries] || 0;
@@ -347,7 +340,6 @@ Vue.createApp({
             return Math.round(cost).toLocaleString('ru-RU');
         },
         
-         
         selectedLevelName() {
             if (!this.Levels) return 'не выбрано';
             if (!this.levelsList || this.levelsList.length === 0) return 'не выбрано';

@@ -63,6 +63,7 @@ class Order(models.Model):
 class Client(models.Model):
     fio = models.CharField('клиент', max_length=200)
     phone = models.CharField('клиент', max_length=12)
+    email = models.EmailField('Email', unique=True, null=True, blank=True)
     address = models.TextField(
         'Адрес квартиры',
         help_text='ул. Подольских курсантов д.5 кв.4'

@@ -7,10 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 	<link rel="stylesheet" href={% static "Style.css" %}>
-	<!-- Для разработки: -->
 	<script src="https://unpkg.com/vue@3"></script>
-	<!-- Для продакшина: -->
-	<!-- <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script> -->
 	<script src="https://unpkg.com/vee-validate"></script>
 	<title>Тортики</title>
 </head>
@@ -20,7 +17,7 @@
 		<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
 			<span class="navbar-toggler-icon"></span>
 		</button>
-		<a class="navbar-brand" href="#">
+		<a class="navbar-brand" href="/">
 			<img src={% static "img/Logo.svg" %} alt="CakeBake">
 		</a>
 		<div class="collapse navbar-collapse justify-content-end" id="navbar">
@@ -44,23 +41,20 @@
 				<li class="nav-item d-flex align-items-center">
 					<a class="nav-link fw-lighter me-1 cake_blue position-relative" href="#">
 						<img src={% static "img/shopping-cart.svg" %} alt="">
-						<!--метка на иконке, убрать класс d-none чтоб появилась-->
 						<span class="position-absolute translate-middle badge rounded-pill cake__bg_pink fs_8 d-none">1</span>
 					</a>
-					<a class="nav-link fw-lighter me-1 cake_blue position-relative" href="#RegModal" data-bs-toggle="modal">
+					<a class="nav-link fw-lighter me-1 cake_blue position-relative" href="#RegModal" data-bs-toggle="modal" id="loginBtn">
 						<img src={% static "img/user.svg" %} alt="">
-						<!--метка на иконке, убрать класс d-none чтоб появилась-->
-						<span class="position-absolute translate-middle badge rounded-pill cake__bg_pink fs_8 d-none">1</span>
 					</a>
-					<a class="nav-link fw-lighter cake_grey fs_12 d-none" href="#">
-						Ирина
+					<a class="nav-link fw-lighter cake_grey fs_12" href="/lk/" id="profileLink" style="display: none;">
+						Профиль
 					</a>
 				</li>
 			</ul>
 		</div>
 	</nav>
-
 </header>
+
 <main>
 	<div class="container mt-header">
 		<aside class="modal fade" id="RegModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="RegModalLabel" aria-hidden="true">
@@ -72,35 +66,29 @@
 					<div class="modal-header border-0 py-0">
 						<label for="reg" class="modal-title font_Gogh fs_40 cake_blue" id="RegModalLabel">Вход / Регистрация</label>
 					</div>
-					<form class="d-none">
-						<input v-model="RegInput" type="text" name="REG">
-						<button type="submit" ref="HiddenFormSubmitReg">reg</button>
-					</form>
 					<v-form :validation-schema="RegSchema" class="modal-body position-relative d-flex flex-column align-items-center px-5 pb-4" @submit="RegSubmit">
-						<v-field v-if="RegInput !== 'Регистрация успешна'" v-model="RegInput" name="reg" type="text" id="reg" :placeholder="Step === `Number` ? `Введите ваш номер` : `Введите код`" class="form-control cake__textinput"></v-field>
-						<v-field v-if="Step === 'Number'" v-model="RegInput" type="phone" name="phone_format" class="d-none"></v-field>
-						<v-field v-if="Step === 'Code'" v-model="RegInput" type="phone" name="code_format" class="d-none"></v-field>
-						<button v-if="RegInput !== 'Регистрация успешна'" type="submit" class="btn text-white w-100 rounded-pill mt-3 py-2 shadow-none cake__button fs_12 cake__bg_pink">Отправить</button>
-						<span v-if="RegInput === 'Регистрация успешна'" class="cake_grey text-center">Регистрация успешна</span>
-						<small class="fs_12 cake_pink text-center position-absolute bottom-0"><error-message name="reg">
-							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-exclamation-circle mb-1" viewBox="0 0 16 16">
-								<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-								<path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
-							</svg>
-							{% verbatim %}
-							{{Step === 'Number' ? 'Введите номер' : 'Введите код'}}</error-message></small>
-							{% endverbatim %}
-						<error-message name="phone_format" class="fs_12 cake_pink text-center position-absolute bottom-0"></error-message>
-						<error-message name="code_format" class="fs_12 cake_pink text-center position-absolute bottom-0"></error-message>
+						{% verbatim %}
+						<v-field v-if="RegInput !== 'Регистрация успешна'" v-model="RegInput" name="reg" type="email" id="reg" placeholder="Введите ваш email" class="form-control cake__textinput"></v-field>
+						<button v-if="RegInput !== 'Регистрация успешна'" type="submit" class="btn text-white w-100 rounded-pill mt-3 py-2 shadow-none cake__button cake__bg_pink" :disabled="loading">
+							{{ loading ? 'Отправка...' : 'Войти' }}
+						</button>
+						<span v-if="RegInput === 'Регистрация успешна'" class="cake_grey text-center">Вход выполнен, перенаправление...</span>
+						<span v-if="error" class="fs_12 cake_pink text-center mt-2">{{ error }}</span>
+						<small class="fs_12 cake_pink text-center position-absolute bottom-0">
+							<error-message name="reg">
+								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-exclamation-circle mb-1" viewBox="0 0 16 16">
+									<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+									<path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+								</svg>
+								Введите корректный email
+							</error-message>
+						</small>
+						{% endverbatim %}
 					</v-form>
-
 					<div class="modal-footer d-flex flex-column justify-content-between align-items-center text-center border-0 mx-5">
 						<p class="fs_12 cake_grey">
-							{% verbatim %}
-							{{Step === `Number` ? `Нажимая на кнопку, вы соглашаетесь на обработку персональных данных в соответствии с политикой конфиденциальности` : Step === 'Code' ? `Осталось времени: 05:00` : ``}}
-							{% endverbatim %}
+							Нажимая на кнопку, вы соглашаетесь на обработку персональных данных в соответствии с политикой конфиденциальности
 						</p>
-						<a href="#" v-if="Step === `Code`" @click.prevent="ToRegStep1" class="text-decoration-none cake_pink fs_12">изменить данные</a>
 					</div>
 				</div>
 			</div>
@@ -364,9 +352,7 @@
 							</div>
 							<div class="col-12 col-md-6 d-flex flex-column align-items-center align-items-md-end mt-3 mt-md-0">
 								<div class="d-flex">
-									{% verbatim %}
-									<span class="cake_pink fs_40 fw-bold me-2">Итого: {{ FormattedCost }}₽</span>
-									{% endverbatim %}
+									<span class="cake_pink fs_40 fw-bold me-2">Итого: {{ Cost }}₽</span>
 								</div>
 								<button type="submit" class="btn btn_hover text-white rounded-pill mt-3 px-5 shadow-none cake__button cake__bg_pink">К оплате</button>
 							</div>

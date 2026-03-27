@@ -29,7 +29,8 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ['fio', 'phone', 'address']
+    list_display = ['fio', 'phone', 'email', 'user']
+    list_display_links = ['fio']
 
 
 @admin.register(Cake)

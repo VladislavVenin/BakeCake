@@ -10,7 +10,7 @@ from BakeCake.models import Client
 
 
 @api_view(['POST'])
-@permission_classes(['AllowAny'])
+@permission_classes([AllowAny])
 def auth_by_email(request):
     """
     Email authentication: if there is an email, we will log in,
@@ -125,16 +125,20 @@ def get_orders(request):
     """Receiving user orders."""
     if not request.user.is_authenticated:
         return Response(
-            {'error': 'Не авторизован'},
-            status=status.HTTP_401_UNAUTHORIZED,
+            {'error': 'Не авторизован'}, 
+            status=status.HTTP_401_UNAUTHORIZED
         )
     
     try:
         client = request.user.client_data
         orders = client.orders.all().prefetch_related(
-            'ordered_cakes__cake'
+            'ordered_cakes__cake',
+            'ordered_cakes__cake__toppings',
+            'ordered_cakes__cake__berries',
+            'ordered_cakes__cake__decor',
+            'ordered_cakes__cake__inscription'
         ).order_by('-order_time')
-
+        
         orders_data = []
         for order in orders:
             cakes = []
@@ -147,8 +151,12 @@ def get_orders(request):
                     'price': float(cake.get_price()),
                     'layers': str(cake.layers) if cake.layers else None,
                     'shape': str(cake.shape) if cake.shape else None,
+                    'toppings': [t.title for t in cake.toppings.all()],
+                    'berries': [b.title for b in cake.berries.all()],
+                    'decor': [d.title for d in cake.decor.all()],
+                    'inscription': [i.title for i in cake.inscription.all()],
                 })
-
+            
             orders_data.append({
                 'id': order.id,
                 'order_time': order.order_time.strftime('%d.%m.%Y %H:%M'),
@@ -156,11 +164,11 @@ def get_orders(request):
                 'status': order.get_status_display(),
                 'status_code': order.status,
                 'comment': order.comment,
-                'cakes': cakes,
+                'cakes': cakes
             })
-
+        
         return Response(orders_data)
-    
+        
     except Client.DoesNotExist:
         return Response([])
     
