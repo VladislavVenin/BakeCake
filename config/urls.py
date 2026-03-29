@@ -11,6 +11,8 @@ urlpatterns = [
     path("", views.index, name="index"),
     path("lk/", views.lk, name="lk"),
     path("api/cake-data/", views.get_cake_data, name="cake-data"),
+    path("api/check-promo/", views.check_promo_code, name="check_promo"),
+    path("create-order/", views.create_order, name="create_order"),  # новый URL
     path("accounts/", include("accounts.urls")),
 ]
 

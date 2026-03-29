@@ -50,6 +50,26 @@ class Order(models.Model):
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default="accepted", verbose_name="Статус"
     )
+    promo_code = models.ForeignKey(
+        'PromoCode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Промокод'
+    )
+    discount_amount = models.DecimalField(
+        'Сумма скидки', 
+        max_digits=19, 
+        decimal_places=2, 
+        default=0
+    )
+    original_price = models.DecimalField(
+        'Исходная сумма', 
+        max_digits=19, 
+        decimal_places=2, 
+        null=True, 
+        blank=True
+    )
 
     class Meta:
         ordering = ('order_time',)
@@ -58,6 +78,46 @@ class Order(models.Model):
 
     def __str__(self):
         return f'{str(self.order_time)}'
+    
+
+class PromoCode(models.Model):
+    code = models.CharField('Промокод', max_length=20, unique=True, db_index=True)
+    title = models.CharField('Название', max_length=20)
+    discount_percent = models.PositiveIntegerField('Процент скидки', help_text='От 1 до 100')
+    valid_from = models.DateTimeField('Начало действия')
+    valid_to = models.DateTimeField('Окончание действия')
+    is_active = models.BooleanField('Активен', default=True)
+    used_count = models.PositiveIntegerField('Количество применений', default=0)
+    users_who_used = models.ManyToManyField(
+        User, 
+        blank=True, 
+        related_name='promocodes', 
+        verbose_name='Использовавшие пользователи'
+    )
+
+    class Meta:
+        verbose_name = 'Промокод'
+        verbose_name_plural = 'Промокоды'
+
+    def __str__(self):
+        return f"{self.code} ({self.discount_percent}%)"
+    
+    def is_valid(self, user=None):
+        from django.utils import timezone
+        now = timezone.now()
+        
+        if not self.is_active:
+            return False
+        if now < self.valid_from or now > self.valid_to:
+            return False
+        if user and user.is_authenticated and user in self.users_who_used.all():
+            return False
+        
+        return True
+    
+    def apply_discount(self, total_price):
+        discount = total_price * self.discount_percent / 100
+        return round(discount, 2)
 
 
 class Client(models.Model):

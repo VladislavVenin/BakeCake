@@ -1,0 +1,83 @@
+{% load static %}
+<aside class="modal fade" id="RegModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+       aria-labelledby="RegModalLabel" aria-hidden="true">
+    {% if user.is_authenticated %}
+    {% else %}
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content my-modal px-4">
+                <div class="modal-header border-0 pb-0 pt-4">
+                    <button type="button" class="btn-close border rounded-pill" data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+
+                <!-- Навигация вкладок -->
+                <div class="text-center mb-3">
+                    <a id="tab-login" href="#" data-bs-toggle="tab" data-bs-target="#pane-login" role="tab"
+                       aria-controls="pane-login" aria-selected="true"
+                       class="cake_blue font_Gogh fs_40 modal-title text-decoration-none">Вход</a>
+                    <span class="mx-2 cake_grey modal-title font_Gogh fs_40">/</span>
+                    <a id="tab-register" href="#" data-bs-toggle="tab" data-bs-target="#pane-register" role="tab"
+                       aria-controls="pane-register" aria-selected="false"
+                       class="cake_grey font_Gogh fs_40 modal-title text-decoration-none">Регистрация</a>
+                </div>
+
+                <!-- Контент вкладок -->
+                <div class="tab-content">
+
+                    <!-- Вкладка: Вход -->
+                    <div class="tab-pane fade show active" id="pane-login" role="tabpanel" aria-labelledby="tab-login"
+                         tabindex="0">
+                        <form method="post" action="">
+                            {% csrf_token %}
+                            <div class="modal-body">
+                                <input name="phone" type="text" class="form-control cake__textinput"
+                                       placeholder="Телефон" required>
+                                <input name="password" type="password" class="form-control cake__textinput mt-2"
+                                       placeholder="Пароль" required>
+                                <button type="submit"
+                                        class="btn cake__button cake__bg_pink text-white w-100 rounded-pill mt-3">
+                                    Войти
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Вкладка: Регистрация -->
+                    <div class="tab-pane fade" id="pane-register" role="tabpanel" aria-labelledby="tab-register"
+                         tabindex="0">
+                        <form method="post" action="">
+                            {% csrf_token %}
+                            <div class="modal-body">
+                                <input name="phone" type="text" class="form-control cake__textinput"
+                                       placeholder="Телефон" required>
+                                <input name="first_name" type="text" class="form-control cake__textinput mt-2"
+                                       placeholder="Имя">
+                                <input name="email" type="email" class="form-control cake__textinput mt-2"
+                                       placeholder="Email">
+                                <input name="password1" type="password" class="form-control cake__textinput mt-2"
+                                       placeholder="Пароль" required>
+                                <input name="password2" type="password" class="form-control cake__textinput mt-2"
+                                       placeholder="Повторите пароль" required>
+                                <button type="submit"
+                                        class="btn cake__button cake__bg_pink text-white w-100 rounded-pill mt-3">
+                                    Зарегистрироваться
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer d-flex flex-column justify-content-between align-items-center text-center border-0 mx-5">
+                    <p class="fs_12 cake_grey">
+                        Нажимая на кнопку, вы
+                        <a href="" class="fs_12 cake_grey">
+                            соглашаетесь на обработку персональных данных
+                        </a>
+                        в соответствии с политикой конфиденциальности
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</aside>

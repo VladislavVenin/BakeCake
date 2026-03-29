@@ -142,6 +142,15 @@ Vue.createApp({
             Dates: null,
             Time: null,
             DelivComments: '',
+
+            PromoCode: '',
+            PromoCodeApplied: false,
+            PromoCodeDiscount: 0,
+            PromoCodePercent: 0,
+            FinalPrice: 0,
+            CheckingPromo: false,
+            PromoMessage: '',
+            PromoError: '',
             
             isLoading: true,
             error: null
@@ -279,12 +288,73 @@ Vue.createApp({
                 this.isLoading = false;
             }
         },
+
+        async applyPromoCode() {
+            if (!this.PromoCode) {
+                this.PromoError = 'Введите промокод';
+                return;
+            }
+
+            this.CheckingPromo = true;
+            this.PromoError = '';
+            this.PromoMessage = '';
+
+            try {
+                const response = await fetch('/api/check-promo/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': this.getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        code: this.PromoCode,
+                        total_price: this.Cost
+                    })
+                });
+                
+                const data = await response.json();
+
+                if (response.ok && data.valid) {
+                    this.PromoCodeApplied = true;
+                    this.PromoCodeDiscount = data.discount_amount;
+                    this.PromoCodePercent = data.discount_percent;
+                    this.FinalPrice = data.final_price;
+                    this.PromoMessage = data.message;
+
+                    this.$refs.HiddenFormSubmit?.form?.querySelector('[name="PROMO_CODE"]')?.remove();
+                    const promoInput = document.createElement('input');
+                    promoInput.type = 'hidden';
+                    promoInput.name = 'PROMO_CODE';
+                    promoInput.value = this.PromoCode;
+                    this.$refs.HiddenFormSubmit?.appendChild(promoInput);
+                } else {
+                    this.PromoError = data.error || 'Не удалось применить промокод';
+                }
+            } catch (error) {
+                console.error('Ошибка проверки промокода:', error);
+                this.PromoError = 'Ошибка соединения с сервером';
+            } finally {
+                this.CheckingPromo = false;
+            }
+        },
         
+        removePromoCode() {
+            this.PromoCodeApplied = false;
+            this.PromoCodeDiscount = 0;
+            this.PromoCodePercent = 0;
+            this.PromoCode = '';
+            this.PromoMessage = '';
+            this.PromoError = '';
+
+            const promoInput = this.$refs.HiddenFormSubmit?.querySelector('[name="PROMO_CODE"]');
+            if (promoInput) promoInput.remove();
+        },
+
         getBerryPrice() {
             if (!this.Berries) return 0;
             return this.berriesData[this.Berries] || 0;
         },
-        
+
         getToppingPrice() {
             if (!this.Topping) return 0;
             return this.toppingsData[this.Topping] || 0;
@@ -317,7 +387,29 @@ Vue.createApp({
             this.Levels = null;
             this.Form = null;
             this.Words = '';
-        }
+        },
+        submitOrder() {
+            if (this.$refs.HiddenForm) {
+                const form = this.$refs.HiddenForm;
+                form.querySelector('[name="LEVELS"]').value = this.Levels || '';
+                form.querySelector('[name="FORM"]').value = this.Form || '';
+                form.querySelector('[name="TOPPING"]').value = this.Topping || '';
+                form.querySelector('[name="BERRIES"]').value = this.Berries || '';
+                form.querySelector('[name="DECOR"]').value = this.Decor || '';
+                form.querySelector('[name="WORDS"]').value = this.Words || '';
+                form.querySelector('[name="COMMENTS"]').value = this.Comments || '';
+                form.querySelector('[name="NAME"]').value = this.Name || '';
+                form.querySelector('[name="PHONE"]').value = this.Phone || '';
+                form.querySelector('[name="EMAIL"]').value = this.Email || '';
+                form.querySelector('[name="ADDRESS"]').value = this.Address || '';
+                form.querySelector('[name="DATE"]').value = this.Dates || '';
+                form.querySelector('[name="TIME"]').value = this.Time || '';
+                form.querySelector('[name="DELIVCOMMENTS"]').value = this.DelivComments || '';
+                form.querySelector('[name="PROMO_CODE"]').value = this.AppliedPromoCode || '';
+                
+                form.submit();
+            }
+        },
     },
     
     computed: {
