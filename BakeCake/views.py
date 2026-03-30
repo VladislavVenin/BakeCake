@@ -7,7 +7,10 @@ from .models import (
     Berry,
     Decor,
     Inscription,
-    PromoCode
+    PromoCode,
+    Client,
+    Order,
+    OrderedCake
 )
 from rest_framework import status
 from rest_framework.decorators import api_view

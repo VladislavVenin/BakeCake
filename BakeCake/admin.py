@@ -9,7 +9,8 @@ from .models import (
     Topping,
     Berry,
     Inscription,
-    Decor
+    Decor,
+    PromoCode
 )
 from django.utils.html import format_html
 
@@ -73,3 +74,5 @@ class InscriptionAdmin(admin.ModelAdmin):
 @admin.register(Decor)
 class DecorAdmin(admin.ModelAdmin):
     list_display = ['title', 'price']
+
+admin.site.register(PromoCode)
