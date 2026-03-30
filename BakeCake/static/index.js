@@ -1,116 +1,87 @@
-Vue.createApp({
-    name: "App",
-    components: {
-        VForm: VeeValidate.Form,
-        VField: VeeValidate.Field,
-        ErrorMessage: VeeValidate.ErrorMessage,
-    },
+const app = Vue.createApp({
     data() {
         return {
             schema1: {
                 lvls: (value) => {
-                    if (value) {
-                        return true;
-                    }
+                    if (value) return true;
                     return ' количество уровней';
                 },
                 form: (value) => {
-                    if (value) {
-                        return true;
-                    }
+                    if (value) return true;
                     return ' форму торта';
                 },
                 topping: (value) => {
-                    if (value) {
-                        return true;
-                    }
+                    if (value) return true;
                     return ' топпинг';
                 }
             },
             schema2: {
                 name: (value) => {
-                    if (value) {
-                        return true;
-                    }
+                    if (value) return true;
                     return ' имя';
                 },
                 phone: (value) => {
-                    if (value) {
-                        return true;
-                    }
+                    if (value) return true;
                     return ' телефон';
                 },
                 name_format: (value) => {
-                    const regex = /^[a-zA-Zа-яА-Я]+$/
-                    if (!value) {
-                        return true;
-                    }
-                    if (!regex.test(value)) {
-                        return '⚠ Формат имени нарушен';
-                    }
+                    const regex = /^[a-zA-Zа-яА-Я]+$/;
+                    if (!value) return true;
+                    if (!regex.test(value)) return '⚠ Формат имени нарушен';
                     return true;
                 },
                 email_format: (value) => {
-                    const regex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i
-                    if (!value) {
-                        return true;
-                    }
-                    if (!regex.test(value)) {
-                        return '⚠ Формат почты нарушен';
-                    }
+                    const regex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i;
+                    if (!value) return true;
+                    if (!regex.test(value)) return '⚠ Формат почты нарушен';
                     return true;
                 },
                 phone_format: (value) => {
-                    const regex = /^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$/
-                    if (!value) {
-                        return true;
-                    }
-                    if (!regex.test(value)) {
-                        return '⚠ Формат телефона нарушен';
-                    }
+                    const regex = /^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$/;
+                    if (!value) return true;
+                    if (!regex.test(value)) return '⚠ Формат телефона нарушен';
                     return true;
                 },
                 email: (value) => {
-                    if (value) {
-                        return true;
-                    }
+                    if (value) return true;
                     return ' почту';
                 },
                 address: (value) => {
-                    if (value) {
-                        return true;
-                    }
+                    if (value) return true;
                     return ' адрес';
                 },
                 date: (value) => {
-                    if (value) {
-                        return true;
+                    if (!value) return ' дату доставки';
+                    // Проверка, что дата не прошедшая
+                    const selectedDate = new Date(value);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (selectedDate < today) {
+                        return '⚠ Нельзя выбрать прошедшую дату';
                     }
-                    return ' дату доставки';
+                    return true;
                 },
                 time: (value) => {
-                    if (value) {
-                        return true;
+                    if (!value) return ' время доставки';
+                    
+                    if (this.Dates) {
+                        const selectedDate = new Date(this.Dates);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        if (selectedDate.getTime() === today.getTime()) {
+                            const [hours, minutes] = value.split(':');
+                            const selectedTime = new Date();
+                            selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+                            const now = new Date();
+                            
+                            if (selectedTime <= now) {
+                                return '⚠ Время доставки уже прошло';
+                            }
+                        }
                     }
-                    return ' время доставки';
+                    return true;
                 }
-            },
-            
-            DATA: {
-                Levels: [],
-                Forms: [],
-                Toppings: [],
-                Berries: [],
-                Decors: []
-            },
-            
-            Costs: {
-                Levels: [],
-                Forms: [],
-                Toppings: [],
-                Berries: [],
-                Decors: [],
-                Words: 0
             },
             
             levelsList: [],
@@ -143,35 +114,50 @@ Vue.createApp({
             Time: null,
             DelivComments: '',
 
-            PromoCode: '',
-            PromoCodeApplied: false,
-            PromoCodeDiscount: 0,
-            PromoCodePercent: 0,
-            FinalPrice: 0,
-            CheckingPromo: false,
+            PromoCodeInput: '',
+            AppliedPromoCode: '',
+            promoApplied: false,
+            checkingPromo: false,
             PromoMessage: '',
             PromoError: '',
-            
+            finalPrice: 0,
+
             isLoading: true,
-            error: null
-        }
+            error: null,
+            
+            minDate: ''
+        };
     },
     
     mounted() {
+        console.log('Vue mounted');
         this.loadCakeData();
-        this.checkAuthStatus();
+        this.checkAuth();
         
-        this.$watch('Berries', (newVal) => {
-            console.log('=== Berries changed ===');
+        const today = new Date();
+        this.minDate = today.toISOString().split('T')[0];
+        
+        this.$watch('Cost', (newVal) => {
+            this.finalPrice = newVal;
+            if (this.promoApplied && this.AppliedPromoCode) {
+                this.applyPromoCode();
+            }
         });
         
-        this.$watch('Levels', (newVal) => {
-            console.log('=== Levels changed ===');
+        this.$watch('Dates', () => {
+            if (this.Time) {
+                this.$nextTick(() => {
+                    const timeField = document.querySelector('[name="time_format"]');
+                    if (timeField && timeField.dispatchEvent) {
+                        timeField.dispatchEvent(new Event('input'));
+                    }
+                });
+            }
         });
     },
     
     methods: {
-        async checkAuthStatus() {
+        async checkAuth() {
             try {
                 const response = await fetch('/accounts/api/profile/');
                 if (response.ok) {
@@ -186,116 +172,108 @@ Vue.createApp({
                     }
                 }
             } catch (error) {
-                console.log('Пользователь не авторизован');
+                console.log('Auth check failed');
             }
         },
         
         async loadCakeData() {
-            this.isLoading = true;
-            this.error = null;
-            
             try {
                 const response = await fetch('/api/cake-data/');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
                 const data = await response.json();
-                console.log('Loaded API data:', data);
                 
-                if (data.layers && Array.isArray(data.layers)) {
-                    this.levelsList = data.layers.map((layer, index) => ({
-                        id: layer.quantity,
-                        quantity: layer.quantity,
-                        price: parseFloat(layer.price),
-                        name: `${layer.quantity}`
+                if (data.layers) {
+                    this.levelsList = data.layers.map(l => ({
+                        id: l.quantity,
+                        price: parseFloat(l.price),
+                        name: `${l.quantity}`
                     }));
+                    this.levelsData = {};
+                    this.levelsList.forEach(l => { this.levelsData[l.id] = l.price; });
                 }
                 
-                if (data.shapes && Array.isArray(data.shapes)) {
-                    this.formsList = data.shapes.map(shape => ({
-                        id: shape.id || shape.shape,
-                        shape: shape.shape || shape.title,
-                        price: parseFloat(shape.price),
-                        name: shape.shape || shape.title
+                if (data.shapes) {
+                    this.formsList = data.shapes.map(s => ({
+                        id: s.id,
+                        shape: s.shape,
+                        price: parseFloat(s.price)
                     }));
+                    this.formsData = {};
+                    this.formsList.forEach(f => { this.formsData[f.id] = f.price; });
                 }
                 
-                if (data.toppings && Array.isArray(data.toppings)) {
-                    this.toppingsList = data.toppings.map(topping => ({
-                        id: topping.id,
-                        title: topping.title || topping.name,
-                        price: parseFloat(topping.price)
+                if (data.toppings) {
+                    this.toppingsList = data.toppings.map(t => ({
+                        id: t.id,
+                        title: t.title,
+                        price: parseFloat(t.price)
                     }));
+                    this.toppingsData = {};
+                    this.toppingsList.forEach(t => { this.toppingsData[t.id] = t.price; });
                 }
                 
-                if (data.berries && Array.isArray(data.berries)) {
-                    this.berriesList = data.berries.map(berry => ({
-                        id: berry.id,
-                        title: berry.title || berry.name,
-                        price: parseFloat(berry.price)
+                if (data.berries) {
+                    this.berriesList = data.berries.map(b => ({
+                        id: b.id,
+                        title: b.title,
+                        price: parseFloat(b.price)
                     }));
+                    this.berriesData = {};
+                    this.berriesList.forEach(b => { this.berriesData[b.id] = b.price; });
                 }
                 
-                if (data.decors && Array.isArray(data.decors)) {
-                    this.decorsList = data.decors.map(decor => ({
-                        id: decor.id,
-                        title: decor.title || decor.name,
-                        price: parseFloat(decor.price)
+                if (data.decors) {
+                    this.decorsList = data.decors.map(d => ({
+                        id: d.id,
+                        title: d.title,
+                        price: parseFloat(d.price)
                     }));
+                    this.decorsData = {};
+                    this.decorsList.forEach(d => { this.decorsData[d.id] = d.price; });
                 }
                 
-                this.DATA.Levels = this.levelsList.map(l => l.name);
-                this.DATA.Forms = this.formsList.map(f => f.shape);
-                this.DATA.Toppings = this.toppingsList.map(t => t.title);
-                this.DATA.Berries = this.berriesList.map(b => b.title);
-                this.DATA.Decors = this.decorsList.map(d => d.title);
-                
-                this.berriesData = {};
-                this.berriesList.forEach(berry => {
-                    this.berriesData[berry.id] = berry.price;
-                });
-                
-                this.toppingsData = {};
-                this.toppingsList.forEach(topping => {
-                    this.toppingsData[topping.id] = topping.price;
-                });
-                
-                this.decorsData = {};
-                this.decorsList.forEach(decor => {
-                    this.decorsData[decor.id] = decor.price;
-                });
-                
-                this.levelsData = {};
-                this.levelsList.forEach(level => {
-                    this.levelsData[level.id] = level.price;
-                });
-                
-                this.formsData = {};
-                this.formsList.forEach(form => {
-                    this.formsData[form.id] = form.price;
-                });
-                
-                this.Costs.Words = parseFloat(data.words_price) || 500;
-                
-                console.log('Processed levelsList:', this.levelsList);
-                console.log('Processed berriesList:', this.berriesList);
-                
+                this.isLoading = false;
             } catch (error) {
-                console.error('Error loading cake data:', error);
-                this.error = 'Не удалось загрузить данные';
-            } finally {
+                console.error('Error loading data:', error);
+                this.error = 'Ошибка загрузки';
                 this.isLoading = false;
             }
         },
-
+        
+        getLevelPrice() {
+            return this.Levels ? (this.levelsData[this.Levels] || 0) : 0;
+        },
+        
+        getFormPrice() {
+            return this.Form ? (this.formsData[this.Form] || 0) : 0;
+        },
+        
+        getToppingPrice() {
+            return this.Topping ? (this.toppingsData[this.Topping] || 0) : 0;
+        },
+        
+        getBerryPrice() {
+            return this.Berries ? (this.berriesData[this.Berries] || 0) : 0;
+        },
+        
+        getDecorPrice() {
+            return this.Decor ? (this.decorsData[this.Decor] || 0) : 0;
+        },
+        
+        ToStep4() {
+            this.Designed = true;
+            setTimeout(() => {
+                const link = this.$refs.ToStep4;
+                if (link) link.click();
+            }, 0);
+        },
+        
         async applyPromoCode() {
-            if (!this.PromoCode) {
+            if (!this.PromoCodeInput) {
                 this.PromoError = 'Введите промокод';
                 return;
             }
 
-            this.CheckingPromo = true;
+            this.checkingPromo = true;
             this.PromoError = '';
             this.PromoMessage = '';
 
@@ -307,7 +285,7 @@ Vue.createApp({
                         'X-CSRFToken': this.getCookie('csrftoken')
                     },
                     body: JSON.stringify({
-                        code: this.PromoCode,
+                        code: this.PromoCodeInput,
                         total_price: this.Cost
                     })
                 });
@@ -315,194 +293,167 @@ Vue.createApp({
                 const data = await response.json();
 
                 if (response.ok && data.valid) {
-                    this.PromoCodeApplied = true;
+                    this.promoApplied = true;
+                    this.AppliedPromoCode = this.PromoCodeInput;
                     this.PromoCodeDiscount = data.discount_amount;
                     this.PromoCodePercent = data.discount_percent;
-                    this.FinalPrice = data.final_price;
+                    this.finalPrice = data.final_price;
                     this.PromoMessage = data.message;
-
-                    this.$refs.HiddenFormSubmit?.form?.querySelector('[name="PROMO_CODE"]')?.remove();
-                    const promoInput = document.createElement('input');
-                    promoInput.type = 'hidden';
-                    promoInput.name = 'PROMO_CODE';
-                    promoInput.value = this.PromoCode;
-                    this.$refs.HiddenFormSubmit?.appendChild(promoInput);
+                    this.PromoError = '';
                 } else {
                     this.PromoError = data.error || 'Не удалось применить промокод';
+                    this.promoApplied = false;
+                    this.AppliedPromoCode = '';
+                    this.PromoCodeDiscount = 0;
+                    this.finalPrice = this.Cost;
                 }
             } catch (error) {
                 console.error('Ошибка проверки промокода:', error);
                 this.PromoError = 'Ошибка соединения с сервером';
             } finally {
-                this.CheckingPromo = false;
+                this.checkingPromo = false;
             }
         },
         
         removePromoCode() {
-            this.PromoCodeApplied = false;
+            this.promoApplied = false;
+            this.AppliedPromoCode = '';
+            this.PromoCodeInput = '';
             this.PromoCodeDiscount = 0;
             this.PromoCodePercent = 0;
-            this.PromoCode = '';
             this.PromoMessage = '';
             this.PromoError = '';
-
-            const promoInput = this.$refs.HiddenFormSubmit?.querySelector('[name="PROMO_CODE"]');
-            if (promoInput) promoInput.remove();
-        },
-
-        getBerryPrice() {
-            if (!this.Berries) return 0;
-            return this.berriesData[this.Berries] || 0;
-        },
-
-        getToppingPrice() {
-            if (!this.Topping) return 0;
-            return this.toppingsData[this.Topping] || 0;
+            this.finalPrice = this.Cost;
         },
         
-        getDecorPrice() {
-            if (!this.Decor) return 0;
-            return this.decorsData[this.Decor] || 0;
-        },
-        
-        getLevelPrice() {
-            if (!this.Levels) return 0;
-            return this.levelsData[this.Levels] || 0;
-        },
-        
-        getFormPrice() {
-            if (!this.Form) return 0;
-            return this.formsData[this.Form] || 0;
-        },
-        
-        ToStep4() {
-            this.Designed = true
-            setTimeout(() => this.$refs.ToStep4.click(), 0);
-        },
-        
-        resetSelections() {
-            this.Berries = null;
-            this.Topping = null;
-            this.Decor = null;
-            this.Levels = null;
-            this.Form = null;
-            this.Words = '';
-        },
         submitOrder() {
-            if (this.$refs.HiddenForm) {
-                const form = this.$refs.HiddenForm;
-                form.querySelector('[name="LEVELS"]').value = this.Levels || '';
-                form.querySelector('[name="FORM"]').value = this.Form || '';
-                form.querySelector('[name="TOPPING"]').value = this.Topping || '';
-                form.querySelector('[name="BERRIES"]').value = this.Berries || '';
-                form.querySelector('[name="DECOR"]').value = this.Decor || '';
-                form.querySelector('[name="WORDS"]').value = this.Words || '';
-                form.querySelector('[name="COMMENTS"]').value = this.Comments || '';
-                form.querySelector('[name="NAME"]').value = this.Name || '';
-                form.querySelector('[name="PHONE"]').value = this.Phone || '';
-                form.querySelector('[name="EMAIL"]').value = this.Email || '';
-                form.querySelector('[name="ADDRESS"]').value = this.Address || '';
-                form.querySelector('[name="DATE"]').value = this.Dates || '';
-                form.querySelector('[name="TIME"]').value = this.Time || '';
-                form.querySelector('[name="DELIVCOMMENTS"]').value = this.DelivComments || '';
-                form.querySelector('[name="PROMO_CODE"]').value = this.AppliedPromoCode || '';
+            console.log('submitOrder called');
+            
+            if (this.Dates && this.Time) {
+                const selectedDateTime = new Date(`${this.Dates}T${this.Time}`);
+                const now = new Date();
+                
+                if (selectedDateTime <= now) {
+                    alert('Нельзя выбрать прошедшие дату и время доставки');
+                    return;
+                }
+            } else {
+                alert('Заполните дату и время доставки');
+                return;
+            }
+            
+            if (!this.Name || !this.Phone || !this.Email || !this.Address) {
+                alert('Заполните все поля: Имя, Телефон, Почта, Адрес');
+                return;
+            }
+            
+            const form = this.$refs.HiddenForm;
+            if (form) {
+                const fields = {
+                    'LEVELS': this.Levels,
+                    'FORM': this.Form,
+                    'TOPPING': this.Topping,
+                    'BERRIES': this.Berries,
+                    'DECOR': this.Decor,
+                    'WORDS': this.Words,
+                    'COMMENTS': this.Comments,
+                    'NAME': this.Name,
+                    'PHONE': this.Phone,
+                    'EMAIL': this.Email,
+                    'ADDRESS': this.Address,
+                    'DATE': this.Dates,
+                    'TIME': this.Time,
+                    'DELIVCOMMENTS': this.DelivComments,
+                    'PROMO_CODE': this.AppliedPromoCode
+                };
+                
+                for (const [name, value] of Object.entries(fields)) {
+                    const input = form.querySelector(`[name="${name}"]`);
+                    if (input) input.value = value || '';
+                }
                 
                 form.submit();
             }
         },
+        
+        getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
     },
     
     computed: {
         Cost() {
             if (this.isLoading) return 0;
-            
             const total = this.getLevelPrice() + 
                          this.getFormPrice() + 
                          this.getToppingPrice() + 
                          this.getBerryPrice() + 
                          this.getDecorPrice() + 
                          (this.Words && this.Words.trim() !== '' ? 500 : 0);
-            
             return total;
         },
         
         FormattedCost() {
-            const cost = this.Cost;
-            if (isNaN(cost)) return '0';
-            return Math.round(cost).toLocaleString('ru-RU');
+            return Math.round(this.Cost).toLocaleString('ru-RU');
         },
         
         selectedLevelName() {
             if (!this.Levels) return 'не выбрано';
-            if (!this.levelsList || this.levelsList.length === 0) return 'не выбрано';
-            
             const level = this.levelsList.find(l => l.id == this.Levels);
-            if (!level) return 'не выбрано';
-            return level.name || `${level.quantity}`;
+            return level ? level.name : 'не выбрано';
         },
         
         selectedFormName() {
             if (!this.Form) return 'не выбрано';
-            if (!this.formsList || this.formsList.length === 0) return 'не выбрано';
-            
             const form = this.formsList.find(f => f.id == this.Form);
-            if (!form) return 'не выбрано';
-            return form.shape || form.name;
+            return form ? form.shape : 'не выбрано';
         },
         
         selectedToppingName() {
             if (!this.Topping) return 'не выбрано';
-            if (!this.toppingsList || this.toppingsList.length === 0) return 'не выбрано';
-            
             const topping = this.toppingsList.find(t => t.id == this.Topping);
-            if (!topping) return 'не выбрано';
-            return topping.title;
+            return topping ? topping.title : 'не выбрано';
         },
         
         selectedBerryName() {
             if (!this.Berries) return 'нет';
-            if (!this.berriesList || this.berriesList.length === 0) return 'нет';
-            
             const berry = this.berriesList.find(b => b.id == this.Berries);
-            if (!berry) return 'нет';
-            return berry.title;
+            return berry ? berry.title : 'нет';
         },
         
         selectedDecorName() {
             if (!this.Decor) return 'нет';
-            if (!this.decorsList || this.decorsList.length === 0) return 'нет';
-            
             const decor = this.decorsList.find(d => d.id == this.Decor);
-            if (!decor) return 'нет';
-            return decor.title;
-        }
-    },
-    
-    watch: {
-        Berries(newVal) {
-            console.log('Berry selected ID:', newVal);
-            console.log('Berry name:', this.selectedBerryName);
-            console.log('Berry price:', this.getBerryPrice());
+            return decor ? decor.title : 'нет';
         },
-        Levels(newVal) {
-            console.log('Level selected ID:', newVal);
-            console.log('Level name:', this.selectedLevelName);
-            console.log('Level price:', this.getLevelPrice());
-        },
-        Form(newVal) {
-            console.log('Form selected ID:', newVal);
-            console.log('Form name:', this.selectedFormName);
-            console.log('Form price:', this.getFormPrice());
-        },
-        Topping(newVal) {
-            console.log('Topping selected ID:', newVal);
-            console.log('Topping name:', this.selectedToppingName);
-            console.log('Topping price:', this.getToppingPrice());
-        },
-        Decor(newVal) {
-            console.log('Decor selected ID:', newVal);
-            console.log('Decor name:', this.selectedDecorName);
-            console.log('Decor price:', this.getDecorPrice());
+        
+        isUrgent() {
+            if (!this.Dates || !this.Time) return false;
+            try {
+                const deliveryDateTime = new Date(`${this.Dates}T${this.Time}`);
+                const now = new Date();
+                const hoursDiff = (deliveryDateTime - now) / (1000 * 60 * 60);
+                return hoursDiff > 0 && hoursDiff < 24;
+            } catch (e) {
+                return false;
+            }
         }
     }
-}).mount('#VueApp');
+});
+
+app.component('VForm', VeeValidate.Form);
+app.component('VField', VeeValidate.Field);
+app.component('ErrorMessage', VeeValidate.ErrorMessage);
+
+app.mount('#VueApp');

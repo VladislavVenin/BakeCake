@@ -25,6 +25,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from decimal import Decimal
 import json
+from datetime import datetime
 
 
 def index(request):
@@ -53,7 +54,6 @@ def lk(request):
 @api_view(['GET'])
 def get_cake_data(request):
     try:
-        # Получаем данные из БД
         layers = Layer.objects.all()
         shapes = Shape.objects.all()
         toppings = Topping.objects.all()
@@ -116,132 +116,15 @@ def check_promo_code(request):
             'valid': False,
             'error': 'Промокод не найден'
         }, status=status.HTTP_400_BAD_REQUEST)
-    
-
-@csrf_exempt
-def create_order(request):
-    if request.method != 'POST':
-        return redirect('/')
-    
-    try:
-        levels_id = request.POST.get('LEVELS')
-        form_id = request.POST.get('FORM')
-        topping_id = request.POST.get('TOPPING')
-        berries_id = request.POST.get('BERRIES')
-        decor_id = request.POST.get('DECOR')
-        words = request.POST.get('WORDS', '').strip()
-        comment = request.POST.get('COMMENTS', '').strip()
-
-        name = request.POST.get('NAME', '').strip()
-        phone = request.POST.get('PHONE', '').strip()
-        email = request.POST.get('EMAIL', '').strip()
-        address = request.POST.get('ADDRESS', '').strip()
-        delivery_date = request.POST.get('DATE', '')
-        delivery_time = request.POST.get('TIME', '')
-        delivery_comment = request.POST.get('DELIVCOMMENTS', '').strip()
-        promo_code = request.POST.get('PROMO_CODE', '').strip()
-
-        if not all([name, phone, email, address, delivery_date, delivery_time]):
-            messages.error(request, 'Заполните все обязательные поля')
-            return redirect('/#step4')
-
-        client, created = Client.objects.get_or_create(
-            email=email,
-            defaults={
-                'fio': name,
-                'phone': phone,
-                'address': address,
-            }
-        )
-
-        if not created:
-            client.fio = name
-            client.phone = phone
-            client.address = address
-            client.save()
-
-        cake = Cake.objects.create(
-            title=f"Кастомный торт для {name}",
-            description=f"Уровни: {levels_id}, Форма: {form_id}, Топпинг: {topping_id}",
-            default=False,
-            layers_id=levels_id if levels_id and levels_id != 'null' else None,
-            shape_id=form_id if form_id and form_id != 'null' else None,
-        )
-
-        if topping_id and topping_id != 'null':
-            cake.toppings.add(topping_id)
-
-        if berries_id and berries_id != 'null':
-            cake.berries.add(berries_id)
-
-        if decor_id and decor_id != 'null':
-            cake.decor.add(decor_id)
-
-        if words:
-            inscription = Inscription.objects.create(
-                title=words,
-                price=500
-            )
-            cake.inscription.add(inscription)
-        
-
-        cake.save()
-        
-
-        total_price = calculate_cake_price(levels_id, form_id, topping_id, berries_id, decor_id, words)
-        
-
-        discount_amount = Decimal('0')
-        promo_obj = None
-        
-        if promo_code:
-            try:
-                promo_obj = PromoCode.objects.get(code=promo_code.upper())
-                if promo_obj.is_valid(request.user if request.user.is_authenticated else None):
-                    discount_amount = total_price * Decimal(str(promo_obj.discount_percent)) / Decimal('100')
-                    promo_obj.used_count += 1
-                    if request.user.is_authenticated:
-                        promo_obj.users_who_used.add(request.user)
-                    promo_obj.save()
-            except PromoCode.DoesNotExist:
-                pass
-        
-        final_price = total_price - discount_amount
-
-        order = Order.objects.create(
-            client=client,
-            order_price=final_price,
-            comment=comment,
-            status='accepted',
-        )
-        
-        OrderedCake.objects.create(
-            order=order,
-            cake=cake,
-            quantity=1
-        )
-        
-        order.comment = f"{comment}\n\nДоставка: {delivery_date} {delivery_time}\nАдрес: {address}\nКомментарий курьеру: {delivery_comment}"
-        if promo_code:
-            order.comment += f"\nПромокод: {promo_code} (скидка {discount_amount}₽)"
-        order.save()
-        
-        messages.success(request, f'Заказ #{order.id} успешно создан! Сумма: {final_price}₽')
-
-        if request.user.is_authenticated:
-            return redirect('/lk/')
-        else:
-            return redirect('/')
-            
-    except Exception as e:
-        print(f"Ошибка создания заказа: {e}")
-        messages.error(request, f'Ошибка при создании заказа: {str(e)}')
-        return redirect('/#step4')
 
 
-def calculate_cake_price(levels_id, form_id, topping_id, berries_id, decor_id, words):
+def calculate_cake_price_with_urgency(levels_id, form_id, topping_id, berries_id, decor_id, words, delivery_date_str, delivery_time_str):
+    """
+    Рассчитывает стоимость торта с учетом срочности
+    Срочный заказ (менее 24 часов) увеличивает стоимость на 20%
+    """
     total = Decimal('0')
-
+    
     if levels_id and levels_id != 'null':
         try:
             layer = Layer.objects.get(quantity=int(levels_id))
@@ -280,4 +163,157 @@ def calculate_cake_price(levels_id, form_id, topping_id, berries_id, decor_id, w
     if words:
         total += Decimal('500')
     
-    return total
+    try:
+        delivery_datetime = datetime.strptime(f"{delivery_date_str} {delivery_time_str}", "%Y-%m-%d %H:%M")
+        delivery_datetime = timezone.make_aware(delivery_datetime)
+        now = timezone.now()
+        hours_diff = (delivery_datetime - now).total_seconds() / 3600
+        
+        if 0 < hours_diff < 24:
+            total = total * Decimal('1.2')
+            return total, True
+    except:
+        pass
+    
+    return total, False
+
+
+@csrf_exempt
+def create_order(request):
+    if request.method != 'POST':
+        return redirect('/')
+    
+    try:
+        levels_id = request.POST.get('LEVELS')
+        form_id = request.POST.get('FORM')
+        topping_id = request.POST.get('TOPPING')
+        berries_id = request.POST.get('BERRIES')
+        decor_id = request.POST.get('DECOR')
+        words = request.POST.get('WORDS', '').strip()
+        comment = request.POST.get('COMMENTS', '').strip()
+
+        name = request.POST.get('NAME', '').strip()
+        phone = request.POST.get('PHONE', '').strip()
+        email = request.POST.get('EMAIL', '').strip()
+        address = request.POST.get('ADDRESS', '').strip()
+        delivery_date = request.POST.get('DATE', '')
+        delivery_time = request.POST.get('TIME', '')
+        delivery_comment = request.POST.get('DELIVCOMMENTS', '').strip()
+        promo_code = request.POST.get('PROMO_CODE', '').strip()
+
+        if not all([name, phone, email, address, delivery_date, delivery_time]):
+            messages.error(request, 'Заполните все обязательные поля')
+            return redirect('/#step4')
+        
+        try:
+            delivery_datetime = datetime.strptime(f"{delivery_date} {delivery_time}", "%Y-%m-%d %H:%M")
+            delivery_datetime = timezone.make_aware(delivery_datetime)
+            now = timezone.now()
+    
+            if delivery_datetime <= now:
+                messages.error(request, 'Нельзя выбрать прошедшие дату и время доставки')
+                return redirect('/#step4')
+        except ValueError:
+            messages.error(request, 'Неверный формат даты или времени')
+            return redirect('/#step4')
+
+        client = Client.objects.filter(email=email).first()
+        if client:
+            client.fio = name
+            client.phone = phone
+            client.address = address
+            client.save()
+        else:
+            client = Client.objects.create(
+                fio=name,
+                phone=phone,
+                email=email,
+                address=address,
+            )
+
+        cake = Cake.objects.create(
+            title=f"Кастомный торт для {name}",
+            description=f"Уровни: {levels_id}, Форма: {form_id}, Топпинг: {topping_id}",
+            default=False,
+            layers_id=levels_id if levels_id and levels_id != 'null' else None,
+            shape_id=form_id if form_id and form_id != 'null' else None,
+        )
+
+        if topping_id and topping_id != 'null':
+            cake.toppings.add(topping_id)
+
+        if berries_id and berries_id != 'null':
+            cake.berries.add(berries_id)
+
+        if decor_id and decor_id != 'null':
+            cake.decor.add(decor_id)
+
+        if words:
+            inscription = Inscription.objects.create(
+                title=words,
+                price=500
+            )
+            cake.inscription.add(inscription)
+
+        cake.save()
+        
+        total_price, is_urgent = calculate_cake_price_with_urgency(
+            levels_id, form_id, topping_id, berries_id, decor_id, words,
+            delivery_date, delivery_time
+        )
+        
+        discount_amount = Decimal('0')
+        promo_obj = None
+        
+        if promo_code:
+            try:
+                promo_obj = PromoCode.objects.get(code=promo_code.upper())
+                if promo_obj.is_valid(request.user if request.user.is_authenticated else None):
+                    discount_amount = total_price * Decimal(str(promo_obj.discount_percent)) / Decimal('100')
+                    promo_obj.used_count += 1
+                    if request.user.is_authenticated:
+                        promo_obj.users_who_used.add(request.user)
+                    promo_obj.save()
+            except PromoCode.DoesNotExist:
+                pass
+        
+        final_price = total_price - discount_amount
+
+        order = Order.objects.create(
+            client=client,
+            order_price=final_price,
+            original_price=total_price,
+            discount_amount=discount_amount,
+            promo_code=promo_obj,
+            comment=comment,
+            status='accepted',
+        )
+        
+        OrderedCake.objects.create(
+            order=order,
+            cake=cake,
+            quantity=1
+        )
+        
+        full_comment = f"{comment}\n\nДоставка: {delivery_date} {delivery_time}\nАдрес: {address}\nКомментарий курьеру: {delivery_comment}"
+        
+        if is_urgent:
+            full_comment += f"\n⚠️ СРОЧНЫЙ ЗАКАЗ (менее 24 часов) - наценка 20%"
+        
+        if promo_code:
+            full_comment += f"\nПромокод: {promo_code} (скидка {discount_amount}₽)"
+        
+        order.comment = full_comment
+        order.save()
+        
+        messages.success(request, f'Заказ #{order.id} успешно создан! Сумма: {final_price}₽')
+        
+        if request.user.is_authenticated:
+            return redirect('/lk/')
+        else:
+            return redirect('/')
+            
+    except Exception as e:
+        print(f"Ошибка создания заказа: {e}")
+        messages.error(request, f'Ошибка при создании заказа: {str(e)}')
+        return redirect('/#step4')

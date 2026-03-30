@@ -39,15 +39,21 @@ def auth_by_email(request):
     if user:
         login(request, user)
         
-        Client.objects.get_or_create(
-            user=user,
-            defaults={
-                'fio': '',
-                'phone': '',
-                'address': '',
-                'email': email,
-            }
-        )
+        client = Client.objects.filter(email=email).first()
+        if not client:
+            client = Client.objects.filter(user=user).first()
+        
+        if not client:
+            client = Client.objects.create(
+                user=user,
+                fio='',
+                phone='',
+                address='',
+                email=email,
+            )
+        elif not client.user:
+            client.user = user
+            client.save()
         
         return Response({
             'message': 'Вход выполнен',
@@ -63,13 +69,19 @@ def auth_by_email(request):
             password=None,
         )
         
-        Client.objects.create(
-            user=user,
-            fio='',
-            phone='',
-            address='',
-            email=email,
-        )
+        client = Client.objects.filter(email=email).first()
+        
+        if client:
+            client.user = user
+            client.save()
+        else:
+            Client.objects.create(
+                user=user,
+                fio='',
+                phone='',
+                address='',
+                email=email,
+            )
         
         login(request, user)
         
