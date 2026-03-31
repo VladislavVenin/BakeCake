@@ -84,6 +84,10 @@ const app = Vue.createApp({
                 }
             },
             
+            Costs: {
+                Words:0
+            },
+
             levelsList: [],
             formsList: [],
             toppingsList: [],
@@ -230,6 +234,8 @@ const app = Vue.createApp({
                     this.decorsData = {};
                     this.decorsList.forEach(d => { this.decorsData[d.id] = d.price; });
                 }
+                
+                this.Costs.Words = parseFloat(data.words_price);
                 
                 this.isLoading = false;
             } catch (error) {
@@ -395,12 +401,13 @@ const app = Vue.createApp({
     computed: {
         Cost() {
             if (this.isLoading) return 0;
+            const wordsPrice = (this.Words && this.Words.trim() !== '') ? this.Costs.Words: 0;
             const total = this.getLevelPrice() + 
                          this.getFormPrice() + 
                          this.getToppingPrice() + 
                          this.getBerryPrice() + 
                          this.getDecorPrice() + 
-                         (this.Words && this.Words.trim() !== '' ? 500 : 0);
+                         wordsPrice;
             return total;
         },
         

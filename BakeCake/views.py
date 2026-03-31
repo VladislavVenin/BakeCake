@@ -59,29 +59,24 @@ def get_cake_data(request):
         toppings = Topping.objects.all()
         berries = Berry.objects.all()
         decors = Decor.objects.all()
-        words_price_obj = Inscription.objects.get(title="Цена надписи")
-
-        data = {
-            'layers': LayerSerializer(layers, many=True).data,
-            'shapes': ShapeSerializer(shapes, many=True).data,
-            'toppings': ToppingSerializer(toppings, many=True).data,
-            'berries': BerrySerializer(berries, many=True).data,
-            'decors': DecorSerializer(decors, many=True).data,
-            'words_price': words_price_obj.price,
-        }
-
-        return Response(data, status=status.HTTP_200_OK)
-
-    except Inscription.DoesNotExist:
-        return Response(
-            {'error': 'Цена надписи не найдена'},
-            status=status.HTTP_404_NOT_FOUND
-        )
     except Exception as e:
         return Response(
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+    data = {
+            'layers': LayerSerializer(layers, many=True).data,
+            'shapes': ShapeSerializer(shapes, many=True).data,
+            'toppings': ToppingSerializer(toppings, many=True).data,
+            'berries': BerrySerializer(berries, many=True).data,
+            'decors': DecorSerializer(decors, many=True).data,
+        }
+    try:
+        words_price_obj = Inscription.objects.get(title="Цена надписи")
+        data['words_price'] = words_price_obj.price
+    except Inscription.DoesNotExist:
+        data['words_price'] = 500
+    return Response(data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
